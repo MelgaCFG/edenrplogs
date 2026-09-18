@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eden Logs - Discord Webhook & Room Portal</title>
+    <title>Eden Logs - Portal de Webhooks</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></link>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -14,1008 +19,249 @@
                         eden: {
                             50: '#fff7ed',
                             100: '#ffedd5',
-                            200: '#fed7aa',
-                            300: '#fdba74',
-                            400: '#fb923c',
                             500: '#f97316',
                             600: '#ea580c',
                             700: '#c2410c',
-                            800: '#9a3412',
                             900: '#7c2d12',
-                            950: '#431407',
+                            dark: '#0f0f10',
+                            card: '#18181b',
+                            border: '#27272a'
                         }
                     }
                 }
             }
         }
     </script>
-    <!-- Google Fonts Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- FontAwesome icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #1c1917; }
-        ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
-    </style>
 </head>
-<body class="bg-stone-950 text-stone-100 h-full flex flex-col antialiased selection:bg-eden-500 selection:text-white">
+<body class="bg-eden-dark text-gray-100 min-h-screen font-sans antialiased">
 
-    <div id="login-screen" class="fixed inset-0 bg-stone-950 z-50 flex items-center justify-center p-4">
-        <div class="bg-stone-900 border border-stone-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 relative overflow-hidden">
-            <div class="absolute -top-12 -right-12 w-36 h-36 bg-eden-500/10 rounded-full blur-2xl"></div>
-            
-            <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-eden-400 to-eden-600 flex items-center justify-center shadow-lg shadow-eden-600/30 text-white font-bold text-2xl">
-                    <i class="fa-solid fa-seedling"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-xl tracking-tight bg-gradient-to-r from-eden-200 via-eden-400 to-eden-500 bg-clip-text text-transparent">Eden Logs Portal</h1>
-                    <p class="text-xs text-stone-400">Secure Discord Webhook & Room Access</p>
-                </div>
-            </div>
+    <!-- Configuração do Firebase com os teus dados -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBF0dpYF-jgGsHhmuPPZWezFPpqiFcthkc",
+            authDomain: "edenrplogs.firebaseapp.com",
+            projectId: "edenrplogs",
+            storageBucket: "edenrplogs.firebasestorage.app",
+            messagingSenderId: "1060773736396",
+            appId: "1:1060773736396:web:265d4fb6911509d7c1f769",
+            measurementId: "G-Q4T277CNWL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
 
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-stone-400 mb-1">Username / Access ID</label>
-                    <input type="text" id="login-username" placeholder="Enter username..." 
-                        class="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-sm text-stone-200 focus:outline-none focus:border-eden-500 transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-stone-400 mb-1">Password</label>
-                    <input type="password" id="login-password" placeholder="Enter password..." 
-                        class="w-full bg-stone-950 border border-stone-800 rounded-xl px-4 py-3 text-sm text-stone-200 focus:outline-none focus:border-eden-500 transition">
-                </div>
-                <button onclick="handleLogin()" class="w-full py-3.5 bg-gradient-to-r from-eden-500 to-eden-600 hover:from-eden-600 hover:to-eden-700 text-white font-medium text-sm rounded-xl shadow-lg shadow-eden-600/20 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Access Portal
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="app-wrapper" class="h-full flex flex-col hidden">
-        <!-- HEADER -->
-        <header class="bg-stone-900/90 backdrop-blur border-b border-stone-800 sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-eden-400 to-eden-600 flex items-center justify-center shadow-lg shadow-eden-600/30 text-white font-bold text-lg">
-                    <i class="fa-solid fa-seedling"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-base tracking-tight bg-gradient-to-r from-eden-200 via-eden-400 to-eden-500 bg-clip-text text-transparent">Eden Logs</h1>
-                    <p class="text-[11px] text-stone-400">Webhook Room Portal</p>
-                </div>
-            </div>
-
-            <!-- GLOBAL SEARCH BAR -->
-            <div class="flex-1 max-w-md mx-6 relative">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-stone-500 text-xs"></i>
-                    <input type="text" id="global-search" oninput="handleGlobalSearch(this.value)" placeholder="Search across all rooms, folders, and webhook logs..." 
-                        class="w-full bg-stone-950 border border-stone-800 rounded-xl pl-9 pr-4 py-2 text-xs text-stone-200 focus:outline-none focus:border-eden-500 transition">
-                </div>
-                <!-- Search Results Dropdown -->
-                <div id="search-results-dropdown" class="absolute top-full left-0 right-0 mt-2 bg-stone-900 border border-stone-800 rounded-2xl shadow-2xl max-h-96 overflow-y-auto hidden z-50 p-2 space-y-1">
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-3">
-                <div class="hidden sm:flex items-center space-x-2 bg-stone-800/60 px-3 py-1.5 rounded-lg border border-stone-700/50 text-xs text-stone-300">
-                    <i class="fa-solid fa-shield-halved text-eden-400"></i>
-                    <span id="current-user-badge" class="font-medium">Admin</span>
-                </div>
-                <button id="admin-panel-btn" onclick="openAdminModal()" class="px-3 py-1.5 rounded-lg bg-eden-600 hover:bg-eden-700 text-white text-xs font-medium transition flex items-center gap-1.5 shadow">
-                    <i class="fa-solid fa-screwdriver-wrench"></i> Admin Manager
-                </button>
-                <button onclick="handleLogout()" class="p-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition border border-stone-700" title="Logout">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- MAIN LAYOUT: ROOM & FOLDER NAVIGATION + WEBHOOK LOGS -->
-        <main class="flex-1 flex overflow-hidden">
-            
-            <!-- LEFT SIDEBAR: FOLDERS & ROOMS -->
-            <aside class="w-80 bg-stone-900/60 border-r border-stone-800 flex flex-col">
-                <div class="p-4 border-b border-stone-800 flex items-center justify-between">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
-                        <i class="fa-solid fa-folder-tree text-eden-500"></i> Rooms & Folders
-                    </span>
-                    <span id="room-count-badge" class="text-[10px] bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full border border-stone-700">0 Rooms</span>
-                </div>
-
-                <div id="rooms-tree-container" class="flex-1 overflow-y-auto p-3 space-y-3">
-                    <!-- Folders and rooms rendered dynamically -->
-                </div>
-            </aside>
-
-            <!-- CENTER: ACTIVE ROOM WEBHOOK LOGS -->
-            <section class="flex-1 flex flex-col bg-stone-950 overflow-hidden">
-                <!-- Room Header -->
-                <div id="active-room-header" class="bg-stone-900/40 border-b border-stone-800 px-6 py-4 flex items-center justify-between">
-                    <div>
-                        <h2 id="active-room-title" class="text-sm font-bold text-stone-100 flex items-center gap-2">
-                            <i class="fa-solid fa-hashtag text-eden-500"></i> Select a Room
-                        </h2>
-                        <p id="active-room-desc" class="text-xs text-stone-400 mt-0.5">Choose a room from the sidebar to view incoming Discord webhook messages.</p>
-                    </div>
-                    <div id="active-room-webhook-action" class="flex items-center gap-3">
-                        <!-- Dynamic webhook status or assign button -->
-                    </div>
-                </div>
-
-                <!-- Messages Feed -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-4" id="room-messages-container">
-                    <div class="text-center py-20 text-stone-500 text-xs space-y-2">
-                        <i class="fa-solid fa-comments text-3xl text-stone-600 block"></i>
-                        <p>Select an accessible room on the left to inspect incoming Discord webhook logs.</p>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="admin-modal" class="fixed inset-0 bg-stone-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-stone-800 flex items-center justify-between bg-stone-900">
-                <h3 class="font-bold text-sm text-stone-100 flex items-center gap-2">
-                    <i class="fa-solid fa-screwdriver-wrench text-eden-500"></i> Website Manager & Admin Console
-                </h3>
-                <button onclick="closeAdminModal()" class="text-stone-400 hover:text-stone-200 text-sm"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <!-- Tabs -->
-            <div class="flex border-b border-stone-800 bg-stone-900/50 px-6 space-x-4 text-xs font-medium">
-                <button onclick="switchAdminTab('rooms')" id="atab-rooms-btn" class="py-3 text-eden-400 border-b-2 border-eden-500 transition">Rooms & Folders</button>
-                <button onclick="switchAdminTab('webhooks')" id="atab-webhooks-btn" class="py-3 text-stone-400 hover:text-stone-200 transition">Discord Webhooks</button>
-                <button onclick="switchAdminTab('roles')" id="atab-roles-btn" class="py-3 text-stone-400 hover:text-stone-200 transition">Roles & Permissions</button>
-                <button onclick="switchAdminTab('users')" id="atab-users-btn" class="py-3 text-stone-400 hover:text-stone-200 transition">User Logins</button>
-            </div>
-
-            <!-- Modal Content Area -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                
-                <!-- Rooms & Folders Management Pane -->
-                <div id="apane-rooms" class="space-y-6">
-                    <div class="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-4">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-eden-400">Create New Folder or Room</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                            <div>
-                                <label class="block text-stone-400 mb-1">Type</label>
-                                <select id="new-item-type" onchange="toggleItemTypeFields()" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                                    <option value="room">Room</option>
-                                    <option value="folder">Folder</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-stone-400 mb-1" id="item-name-label">Room Name</label>
-                                <input type="text" id="new-item-name" placeholder="e.g. general-logs" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                            <div id="parent-folder-wrap">
-                                <label class="block text-stone-400 mb-1">Parent Folder</label>
-                                <select id="new-item-folder" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                                    <option value="">(No Folder / Root)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="room-role-perms-wrap" class="space-y-2 text-xs">
-                            <label class="block text-stone-400">Required Roles to Access Room (Select Multiple)</label>
-                            <div id="room-roles-checkboxes" class="flex flex-wrap gap-2 pt-1">
-                                <!-- Dynamic role checkboxes -->
-                            </div>
-                        </div>
-                        <div>
-                            <button onclick="createRoomOrFolder()" class="px-4 py-2 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium transition shadow">Create Entry</button>
-                        </div>
-                    </div>
-
-                    <!-- Existing Rooms List -->
-                    <div class="space-y-3">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-stone-400">Existing Rooms & Folders</h4>
-                        <div id="admin-rooms-list" class="space-y-2">
-                            <!-- Injected list -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Webhooks Management Pane -->
-                <div id="apane-webhooks" class="space-y-6 hidden">
-                    <div class="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-4">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-eden-400">Create & Assign Discord Webhook</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <div>
-                                <label class="block text-stone-400 mb-1">Webhook Name</label>
-                                <input type="text" id="wh-name" placeholder="Production Alert Webhook" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                            <div>
-                                <label class="block text-stone-400 mb-1">Assign to Room</label>
-                                <select id="wh-room-select" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                                    <!-- Options -->
-                                </select>
-                            </div>
-                            <div class="sm:col-span-2">
-                                <label class="block text-stone-400 mb-1">Discord Webhook URL</label>
-                                <input type="password" id="wh-url" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                        </div>
-                        <div>
-                            <button onclick="saveWebhook()" class="px-4 py-2 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium transition shadow">Create & Link Webhook</button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-stone-400">Active Webhooks</h4>
-                        <div id="admin-webhooks-list" class="space-y-2">
-                            <!-- Injected list -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Roles Management Pane -->
-                <div id="apane-roles" class="space-y-6 hidden">
-                    <div class="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-4">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-eden-400">Create New Role</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <div>
-                                <label class="block text-stone-400 mb-1">Role Name</label>
-                                <input type="text" id="role-name-input" placeholder="e.g. Moderator, VIP" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                            <div>
-                                <label class="block text-stone-400 mb-1">Description</label>
-                                <input type="text" id="role-desc-input" placeholder="Can access secure channels" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                        </div>
-                        <div>
-                            <button onclick="createRole()" class="px-4 py-2 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium transition shadow">Create Role</button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-stone-400">Configured Roles</h4>
-                        <div id="admin-roles-list" class="space-y-2">
-                            <!-- Injected list -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Users & Logins Management Pane -->
-                <div id="apane-users" class="space-y-6 hidden">
-                    <div class="bg-stone-950 p-4 rounded-2xl border border-stone-800 space-y-4">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-eden-400">Generate User Login</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                            <div>
-                                <label class="block text-stone-400 mb-1">Username</label>
-                                <input type="text" id="user-username-input" placeholder="username" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                            <div>
-                                <label class="block text-stone-400 mb-1">Password</label>
-                                <input type="text" id="user-password-input" placeholder="securepassword" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                            </div>
-                            <div>
-                                <label class="block text-stone-400 mb-1">Assign Role</label>
-                                <select id="user-role-select" class="w-full bg-stone-900 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                                    <!-- Options -->
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <button onclick="createUserLogin()" class="px-4 py-2 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium transition shadow">Generate Login</button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <h4 class="text-xs font-semibold uppercase tracking-wider text-stone-400">Generated User Accounts</h4>
-                        <div id="admin-users-list" class="space-y-2">
-                            <!-- Injected list -->
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="px-6 py-3 border-t border-stone-800 bg-stone-900 flex justify-end">
-                <button onclick="closeAdminModal()" class="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-medium transition">Close Manager</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="room-webhook-modal" class="fixed inset-0 bg-stone-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="font-bold text-sm text-stone-100 flex items-center gap-2">
-                    <i class="fa-brands fa-discord text-eden-500"></i> Configure Room Webhook
-                </h3>
-                <button onclick="closeRoomWebhookModal()" class="text-stone-400 hover:text-stone-200 text-sm"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="space-y-3 text-xs">
-                <input type="hidden" id="modal-target-room-id">
-                <div>
-                    <label class="block text-stone-400 mb-1">Webhook Name</label>
-                    <input type="text" id="modal-wh-name" placeholder="e.g. Channel Alerts Webhook" class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                </div>
-                <div>
-                    <label class="block text-stone-400 mb-1">Discord Webhook URL</label>
-                    <input type="password" id="modal-wh-url" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-stone-200 focus:outline-none focus:border-eden-500">
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeRoomWebhookModal()" class="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs">Cancel</button>
-                <button onclick="saveRoomWebhookModal()" class="px-4 py-2 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium">Save & Link</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-stone-900 border border-stone-700 text-stone-100 px-4 py-3 rounded-2xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-3 z-50">
-        <div id="toast-icon" class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-check"></i>
-        </div>
-        <div>
-            <p class="text-xs font-semibold" id="toast-title">Success</p>
-            <p class="text-[11px] text-stone-400" id="toast-desc">Operation completed.</p>
-        </div>
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- O conteúdo será injetado pelo JavaScript -->
     </div>
 
     <script>
-        // Application State Data Model
-        let appState = {
-            currentUser: null,
-            roles: [
-                { id: 'admin', name: 'Administrator', description: 'Full system management access' },
-                { id: 'member', name: 'Member', description: 'Standard room access' },
-                { id: 'vip', name: 'VIP', description: 'Exclusive premium room access' }
-            ],
-            users: [
-                { username: 'MelgaCfg', password: 'melgacfgedenconfig', role: 'admin' },
-                { username: 'john_member', password: 'password123', role: 'member' },
-                { username: 'sarah_vip', password: 'password123', role: 'vip' }
-            ],
-            folders: [
-                { id: 'f1', name: 'General Logs' },
-                { id: 'f2', name: 'System Alerts' }
-            ],
-            rooms: [
-                { id: 'r1', name: 'announcements', folderId: 'f1', roles: ['admin', 'member', 'vip'] },
-                { id: 'r2', name: 'security-audit', folderId: 'f2', roles: ['admin'] },
-                { id: 'r3', name: 'vip-lounge', folderId: 'f1', roles: ['admin', 'vip'] }
-            ],
-            webhooks: [
-                { id: 'w1', roomId: 'r1', name: 'General Announcements Webhook', url: 'https://discord.com/api/webhooks/mock/general' },
-                { id: 'w2', roomId: 'r2', name: 'Security Alert Webhook', url: 'https://discord.com/api/webhooks/mock/security' }
-            ],
-            messages: {
-                'r1': [
-                    { id: 101, sender: 'Eden System', content: 'Welcome to Eden Logs announcements room!', time: '10:00 AM', embed: { title: 'Portal Initialized', desc: 'Discord webhooks ready for telemetry.', color: '#f97316' } },
-                    { id: 102, sender: 'Admin', content: 'New patch notes deployed successfully.', time: '11:15 AM', embed: null }
-                ],
-                'r2': [
-                    { id: 201, sender: 'Security Bot', content: '⚠️ Unauthorized login attempt intercepted on gateway node 4.', time: '09:30 AM', embed: { title: 'Security Alert', desc: 'IP rate limit triggered.', color: '#ef4444' } }
-                ],
-                'r3': [
-                    { id: 301, sender: 'VIP Bot', content: 'Welcome to VIP exclusive log stream.', time: '12:00 PM', embed: { title: 'VIP Perks', desc: 'Enjoy high bandwidth telemetry.', color: '#10b981' } }
-                ]
-            },
-            activeRoomId: null
-        };
+        let currentUser = JSON.parse(localStorage.getItem('eden_current_user')) || null;
+        const ADMIN_USER = { username: "MelgaCfg", role: "admin", name: "Administrador" };
 
-        window.onload = function() {
-            const savedUser = sessionStorage.getItem('eden_current_user');
-            if (savedUser) {
-                try {
-                    appState.currentUser = JSON.parse(savedUser);
-                    showMainApp();
-                } catch(e) {
-                    sessionStorage.removeItem('eden_current_user');
-                }
-            }
-        };
-
-        function handleLogin() {
-            const usernameInput = document.getElementById('login-username').value.trim();
-            const passwordInput = document.getElementById('login-password').value.trim();
-
-            if (!usernameInput || !passwordInput) {
-                showToast("Login Failed", "Please enter username and password.", "error");
-                return;
-            }
-
-            const foundUser = appState.users.find(u => u.username === usernameInput && u.password === passwordInput);
-            if (!foundUser) {
-                showToast("Login Failed", "Invalid username or password.", "error");
-                return;
-            }
-
-            appState.currentUser = {
-                username: foundUser.username,
-                role: foundUser.role,
-                isAdmin: foundUser.role === 'admin'
-            };
-
-            sessionStorage.setItem('eden_current_user', JSON.stringify(appState.currentUser));
-            showToast("Welcome Back", `Logged in as ${foundUser.username} (${foundUser.role})`, "success");
-            showMainApp();
-        }
-
-        function handleLogout() {
-            sessionStorage.removeItem('eden_current_user');
-            appState.currentUser = null;
-            document.getElementById('app-wrapper').classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('login-username').value = '';
-            document.getElementById('login-password').value = '';
-            showToast("Logged Out", "Successfully signed out of portal.", "info");
-        }
-
-        function showMainApp() {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('app-wrapper').classList.remove('hidden');
-            
-            document.getElementById('current-user-badge').textContent = `${appState.currentUser.username} (${appState.currentUser.role})`;
-            const adminBtn = document.getElementById('admin-panel-btn');
-            if (appState.currentUser.isAdmin) {
-                adminBtn.classList.remove('hidden');
+        function renderApp() {
+            const app = document.getElementById('app');
+            if (!currentUser) {
+                app.innerHTML = renderLoginScreen();
             } else {
-                adminBtn.classList.add('hidden');
-            }
-
-            renderRoomsTree();
-            
-            const accessibleRooms = getAccessibleRooms();
-            if (accessibleRooms.length > 0) {
-                selectRoom(accessibleRooms[0].id);
+                app.innerHTML = renderDashboard();
+                initRealtimeSync();
             }
         }
 
-        function getAccessibleRooms() {
-            if (!appState.currentUser) return [];
-            if (appState.currentUser.isAdmin) return appState.rooms;
-
-            return appState.rooms.filter(room => {
-                return room.roles && room.roles.includes(appState.currentUser.role);
-            });
-        }
-
-        function renderRoomsTree() {
-            const container = document.getElementById('rooms-tree-container');
-            const accessibleRooms = getAccessibleRooms();
-            document.getElementById('room-count-badge').textContent = `${accessibleRooms.length} Accessible`;
-
-            let html = '';
-
-            appState.folders.forEach(folder => {
-                const folderRooms = accessibleRooms.filter(r => r.folderId === folder.id);
-                
-                html += `
-                    <div class="space-y-1">
-                        <div class="flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                            <span class="flex items-center gap-1.5"><i class="fa-solid fa-folder text-eden-500/70"></i> ${folder.name}</span>
+        function renderLoginScreen() {
+            return `
+                <div class="flex-1 flex items-center justify-center p-4">
+                    <div class="bg-eden-card border border-eden-border rounded-2xl p-8 max-w-md w-full shadow-2xl">
+                        <div class="text-center mb-8">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-eden-500/10 text-eden-500 mb-4 text-2xl">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <h1 class="text-2xl font-bold tracking-tight text-white">Eden Logs</h1>
+                            <p class="text-sm text-gray-400 mt-1">Insira as suas credenciais para aceder ao portal</p>
                         </div>
-                        <div class="pl-3 space-y-1">`;
+                        <form onsubmit="handleLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Utilizador</label>
+                                <input type="text" id="loginUser" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Palavra-passe</label>
+                                <input type="password" id="loginPass" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500">
+                            </div>
+                            <button type="submit" class="w-full bg-eden-600 hover:bg-eden-500 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-eden-600/20">
+                                Entrar no Portal
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
 
-                if (folderRooms.length === 0) {
-                    html += `<div class="px-3 py-1 text-[11px] text-stone-600 italic">No accessible rooms</div>`;
-                } else {
-                    folderRooms.forEach(room => {
-                        const isActive = appState.activeRoomId === room.id;
-                        const activeClass = isActive ? 'bg-eden-600/20 text-eden-300 border-eden-500/40 font-medium' : 'text-stone-300 hover:bg-stone-800/60 border-transparent';
-                        const hasWh = appState.webhooks.some(w => w.roomId === room.id);
-                        
-                        html += `
-                            <button onclick="selectRoom('${room.id}')" class="w-full text-left px-3 py-2 rounded-xl text-xs border transition flex items-center justify-between ${activeClass}">
-                                <span class="flex items-center gap-2"><i class="fa-solid fa-hashtag text-stone-500 text-[10px]"></i> ${room.name}</span>
-                                <div class="flex items-center gap-1.5">
-                                    ${hasWh ? '<i class="fa-brands fa-discord text-eden-400 text-[10px]" title="Webhook Linked"></i>' : ''}
-                                    <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-eden-400' : 'bg-stone-700'}"></span>
-                                </div>
-                            </button>`;
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value;
+            const p = document.getElementById('loginPass').value;
+
+            if (u === "MelgaCfg" && p === "melgacfgedenconfig") {
+                currentUser = ADMIN_USER;
+                localStorage.setItem('eden_current_user', JSON.stringify(currentUser));
+                renderApp();
+            } else {
+                db.collection("users").where("username", "==", u).get().then((querySnapshot) => {
+                    let found = false;
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.password === p) {
+                            found = true;
+                            currentUser = { username: data.username, role: data.role, name: data.name };
+                            localStorage.setItem('eden_current_user', JSON.stringify(currentUser));
+                            renderApp();
+                        }
                     });
+                    if (!found) alert("Credenciais inválidas!");
+                });
+            }
+        }
+
+        function renderDashboard() {
+            return `
+                <div class="flex h-screen overflow-hidden">
+                    <aside class="w-72 bg-eden-card border-r border-eden-border flex flex-col">
+                        <div class="p-5 border-b border-eden-border flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-xl bg-eden-500/20 flex items-center justify-center text-eden-500 font-bold">
+                                    <i class="fa-solid fa-cube"></i>
+                                </div>
+                                <span class="font-bold text-lg text-white">Eden Logs</span>
+                            </div>
+                            <button onclick="logout()" title="Terminar Sessão" class="text-gray-400 hover:text-red-400 transition"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+                        </div>
+                        <div id="sidebar-rooms" class="flex-1 overflow-y-auto p-4 space-y-2">
+                            <p class="text-xs text-gray-500">A carregar salas da nuvem...</p>
+                        </div>
+                        ${currentUser.role === 'admin' ? `
+                            <div class="p-4 border-t border-eden-border">
+                                <button onclick="openAdminModal()" class="w-full bg-eden-600/20 hover:bg-eden-600/30 text-eden-500 text-sm font-semibold py-2.5 rounded-xl transition border border-eden-500/30">
+                                    <i class="fa-solid fa-gear mr-2"></i> Painel de Admin
+                                </button>
+                            </div>
+                        ` : ''}
+                    </aside>
+                    <main id="main-content" class="flex-1 flex flex-col bg-eden-dark overflow-y-auto p-8">
+                        <div class="max-w-2xl mx-auto text-center mt-20">
+                            <h2 class="text-2xl font-bold mb-2">Bem-vindo ao Eden Logs</h2>
+                            <p class="text-gray-400">Selecione uma sala ao lado para ver os registos sincronizados em tempo real.</p>
+                        </div>
+                    </main>
+                </div>
+                <div id="modal-container"></div>
+            `;
+        }
+
+        function initRealtimeSync() {
+            db.collection("rooms").onSnapshot((snapshot) => {
+                const container = document.getElementById('sidebar-rooms');
+                if(!container) return;
+                let html = '<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Salas</h3>';
+                if (snapshot.empty) {
+                    html += '<p class="text-xs text-gray-500 italic">Nenhuma sala criada ainda.</p>';
                 }
-
-                html += `</div></div>`;
-            });
-
-            const rootRooms = accessibleRooms.filter(r => !r.folderId || !appState.folders.some(f => f.id === r.folderId));
-            if (rootRooms.length > 0) {
-                html += `<div class="space-y-1 pt-2">
-                    <div class="px-2 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">General Rooms</div>
-                    <div class="space-y-1">`;
-                rootRooms.forEach(room => {
-                    const isActive = appState.activeRoomId === room.id;
-                    const activeClass = isActive ? 'bg-eden-600/20 text-eden-300 border-eden-500/40 font-medium' : 'text-stone-300 hover:bg-stone-800/60 border-transparent';
-                    const hasWh = appState.webhooks.some(w => w.roomId === room.id);
-                    
+                snapshot.forEach((doc) => {
+                    const room = doc.data();
                     html += `
-                        <button onclick="selectRoom('${room.id}')" class="w-full text-left px-3 py-2 rounded-xl text-xs border transition flex items-center justify-between ${activeClass}">
-                            <span class="flex items-center gap-2"><i class="fa-solid fa-hashtag text-stone-500 text-[10px]"></i> ${room.name}</span>
-                            <div class="flex items-center gap-1.5">
-                                ${hasWh ? '<i class="fa-brands fa-discord text-eden-400 text-[10px]" title="Webhook Linked"></i>' : ''}
-                                <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-eden-400' : 'bg-stone-700'}"></span>
-                            </div>
-                        </button>`;
+                        <div onclick="selectRoom('${doc.id}', '${room.name}')" class="p-3 bg-eden-dark border border-eden-border rounded-xl cursor-pointer hover:border-eden-500 transition flex items-center justify-between">
+                            <span class="font-semibold text-white text-sm"><i class="fa-solid fa-hashtag mr-2 text-eden-500"></i>${room.name}</span>
+                        </div>
+                    `;
                 });
-                html += `</div></div>`;
-            }
-
-            container.innerHTML = html;
+                container.innerHTML = html;
+            });
         }
 
-        function selectRoom(roomId) {
-            const room = appState.rooms.find(r => r.id === roomId);
-            if (!room) return;
+        function selectRoom(roomId, roomName) {
+            const main = document.getElementById('main-content');
+            main.innerHTML = `
+                <div class="flex items-center justify-between pb-4 border-b border-eden-border mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-hashtag text-eden-500 mr-2"></i>${roomName}</h2>
+                        <p class="text-xs text-gray-400">Registo de mensagens e webhooks em tempo real</p>
+                    </div>
+                </div>
+                <div id="room-messages" class="space-y-3 flex-1 overflow-y-auto pr-2">
+                    <p class="text-sm text-gray-500 italic">A carregar mensagens...</p>
+                </div>
+            `;
 
-            if (!appState.currentUser.isAdmin && (!room.roles || !room.roles.includes(appState.currentUser.role))) {
-                showToast("Access Denied", "You do not have the required role to access this room.", "error");
-                return;
-            }
-
-            appState.activeRoomId = roomId;
-            renderRoomsTree();
-
-            document.getElementById('active-room-title').innerHTML = `<i class="fa-solid fa-hashtag text-eden-500"></i> ${room.name}`;
-            document.getElementById('active-room-desc').textContent = `Room ID: ${room.id} • Authorized Roles: ${room.roles ? room.roles.join(', ') : 'None'}`;
-
-            const roomWebhook = appState.webhooks.find(w => w.roomId === room.id);
-            const webhookActionEl = document.getElementById('active-room-webhook-action');
-
-            if (roomWebhook) {
-                webhookActionEl.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs flex items-center gap-1.5">
-                            <i class="fa-brands fa-discord"></i> ${roomWebhook.name}
-                        </span>
-                        ${appState.currentUser.isAdmin ? `<button onclick="openRoomWebhookModal('${room.id}')" class="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs transition" title="Edit Webhook"><i class="fa-solid fa-gear"></i></button>` : ''}
-                    </div>`;
-            } else {
-                if (appState.currentUser.isAdmin) {
-                    webhookActionEl.innerHTML = `
-                        <button onclick="openRoomWebhookModal('${room.id}')" class="px-3 py-1.5 bg-eden-600 hover:bg-eden-700 text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 shadow">
-                            <i class="fa-brands fa-discord"></i> Add Webhook to Room
-                        </button>`;
-                } else {
-                    webhookActionEl.innerHTML = `<span class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> No Webhook Connected</span>`;
+            db.collection("rooms").doc(roomId).collection("messages").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+                const msgContainer = document.getElementById('room-messages');
+                if (!msgContainer) return;
+                if (snapshot.empty) {
+                    msgContainer.innerHTML = '<p class="text-sm text-gray-500 italic">Ainda não existem mensagens nesta sala.</p>';
+                    return;
                 }
-            }
-
-            renderRoomMessages();
-        }
-
-        function renderRoomMessages() {
-            const container = document.getElementById('room-messages-container');
-            const msgs = appState.messages[appState.activeRoomId] || [];
-
-            if (msgs.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20 text-stone-500 text-xs space-y-2">
-                        <i class="fa-solid fa-box-open text-3xl text-stone-600 block"></i>
-                        <p>No Discord webhook logs recorded in this room yet.</p>
-                    </div>`;
-                return;
-            }
-
-            let html = '';
-            msgs.forEach(msg => {
-                let embedHtml = '';
-                if (msg.embed) {
-                    embedHtml = `
-                        <div class="mt-2 bg-[#2b2d31] border-l-4 rounded-r-lg p-3 space-y-1.5 max-w-lg" style="border-left-color: ${msg.embed.color || '#f97316'};">
-                            <div class="text-xs font-semibold text-white">${msg.embed.title}</div>
-                            <div class="text-xs text-stone-300">${msg.embed.desc}</div>
-                        </div>`;
-                }
-
-                html += `
-                    <div class="bg-[#313338] rounded-2xl p-4 border border-stone-800/60 shadow flex space-x-4 max-w-3xl">
-                        <div class="w-10 h-10 rounded-full bg-eden-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                            ${msg.sender.charAt(0).toUpperCase()}
-                        </div>
-                        <div class="flex-1 space-y-1">
-                            <div class="flex items-baseline space-x-2">
-                                <span class="font-semibold text-white text-sm">${msg.sender}</span>
-                                <span class="bg-[#5865F2] text-white text-[10px] px-1 rounded font-medium">BOT</span>
-                                <span class="text-xs text-stone-400">${msg.time}</span>
+                let mHtml = '';
+                snapshot.forEach((doc) => {
+                    const m = doc.data();
+                    mHtml += `
+                        <div class="bg-eden-card border border-eden-border p-4 rounded-xl">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-eden-500">${m.author || 'Webhook'}</span>
+                                <span class="text-[10px] text-gray-500">${new Date(m.timestamp?.toDate ? m.timestamp.toDate() : m.timestamp).toLocaleString()}</span>
                             </div>
-                            <div class="text-stone-200 text-sm whitespace-pre-wrap">${msg.content}</div>
-                            ${embedHtml}
+                            <p class="text-sm text-gray-200">${m.message}</p>
                         </div>
-                    </div>`;
-            });
-            container.innerHTML = html;
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // ROOM WEBHOOK MODAL
-        function openRoomWebhookModal(roomId) {
-            document.getElementById('modal-target-room-id').value = roomId;
-            const existingWh = appState.webhooks.find(w => w.roomId === roomId);
-            if (existingWh) {
-                document.getElementById('modal-wh-name').value = existingWh.name;
-                document.getElementById('modal-wh-url').value = existingWh.url;
-            } else {
-                document.getElementById('modal-wh-name').value = '';
-                document.getElementById('modal-wh-url').value = '';
-            }
-            document.getElementById('room-webhook-modal').classList.remove('hidden');
-            document.getElementById('room-webhook-modal').classList.add('flex');
-        }
-
-        function closeRoomWebhookModal() {
-            document.getElementById('room-webhook-modal').classList.remove('flex');
-            document.getElementById('room-webhook-modal').classList.add('hidden');
-        }
-
-        function saveRoomWebhookModal() {
-            const roomId = document.getElementById('modal-target-room-id').value;
-            const name = document.getElementById('modal-wh-name').value.trim();
-            const url = document.getElementById('modal-wh-url').value.trim();
-
-            if (!name || !url) {
-                showToast("Error", "Please fill in webhook name and URL.", "error");
-                return;
-            }
-
-            const existingIdx = appState.webhooks.findIndex(w => w.roomId === roomId);
-            if (existingIdx >= 0) {
-                appState.webhooks[existingIdx] = { id: appState.webhooks[existingIdx].id, roomId, name, url };
-            } else {
-                appState.webhooks.push({ id: 'w_' + Date.now(), roomId, name, url });
-            }
-
-            closeRoomWebhookModal();
-            showToast("Webhook Saved", "Discord webhook linked to room successfully.", "success");
-            selectRoom(roomId);
-            renderAdminLists();
-        }
-
-        // GLOBAL SEARCH FUNCTIONALITY
-        function handleGlobalSearch(query) {
-            const dropdown = document.getElementById('search-results-dropdown');
-            const q = query.trim().toLowerCase();
-
-            if (!q) {
-                dropdown.classList.add('hidden');
-                dropdown.innerHTML = '';
-                return;
-            }
-
-            let results = [];
-
-            appState.rooms.forEach(room => {
-                if (room.name.toLowerCase().includes(q)) {
-                    results.push({ type: 'Room', title: room.name, id: room.id, desc: `Folder: ${getFolderName(room.folderId)}` });
-                }
-            });
-
-            appState.folders.forEach(folder => {
-                if (folder.name.toLowerCase().includes(q)) {
-                    results.push({ type: 'Folder', title: folder.name, id: folder.id, desc: 'Folder Category' });
-                }
-            });
-
-            Object.keys(appState.messages).forEach(roomId => {
-                const room = appState.rooms.find(r => r.id === roomId);
-                const roomName = room ? room.name : roomId;
-                appState.messages[roomId].forEach(msg => {
-                    if (msg.content.toLowerCase().includes(q) || msg.sender.toLowerCase().includes(q)) {
-                        results.push({ type: 'Message', title: `#${roomName}: ${msg.content.substring(0, 35)}...`, id: roomId, desc: `Sender: ${msg.sender} at ${msg.time}` });
-                    }
+                    `;
                 });
+                msgContainer.innerHTML = mHtml;
             });
-
-            if (results.length === 0) {
-                dropdown.innerHTML = `<div class="p-3 text-xs text-stone-500 text-center">No matching rooms or messages found for "${query}"</div>`;
-                dropdown.classList.remove('hidden');
-                return;
-            }
-
-            let html = `<div class="text-[10px] uppercase font-semibold text-stone-500 px-3 py-1">Search Results (${results.length})</div>`;
-            results.slice(0, 6).forEach(res => {
-                html += `
-                    <button onclick="jumpToSearchResult('${res.type}', '${res.id}')" class="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-800 transition flex items-center justify-between text-xs">
-                        <div>
-                            <div class="font-medium text-stone-200">${res.title}</div>
-                            <div class="text-[10px] text-stone-400">${res.desc}</div>
-                        </div>
-                        <span class="px-2 py-0.5 rounded bg-stone-800 text-eden-400 text-[10px]">${res.type}</span>
-                    </button>`;
-            });
-
-            dropdown.innerHTML = html;
-            dropdown.classList.remove('hidden');
         }
 
-        function getFolderName(folderId) {
-            const f = appState.folders.find(x => x.id === folderId);
-            return f ? f.name : 'General';
-        }
-
-        function jumpToSearchResult(type, id) {
-            document.getElementById('search-results-dropdown').classList.add('hidden');
-            document.getElementById('global-search').value = '';
-            if (type === 'Room' || type === 'Message') {
-                selectRoom(id);
-            }
-        }
-
-        // ADMIN MODAL & MANAGEMENT FUNCTIONS
         function openAdminModal() {
-            if (!appState.currentUser || !appState.currentUser.isAdmin) return;
-            document.getElementById('admin-modal').classList.remove('hidden');
-            document.getElementById('admin-modal').classList.add('flex');
-            populateAdminDropdowns();
-            renderAdminLists();
-        }
-
-        function closeAdminModal() {
-            document.getElementById('admin-modal').classList.remove('flex');
-            document.getElementById('admin-modal').classList.add('hidden');
-        }
-
-        function switchAdminTab(tab) {
-            const tabs = ['rooms', 'webhooks', 'roles', 'users'];
-            tabs.forEach(t => {
-                document.getElementById(`apane-${t}`).classList.add('hidden');
-                document.getElementById(`atab-${t}-btn`).className = "py-3 text-stone-400 hover:text-stone-200 transition";
-            });
-            document.getElementById(`apane-${tab}`).classList.remove('hidden');
-            document.getElementById(`atab-${tab}-btn`).className = "py-3 text-eden-400 border-b-2 border-eden-500 transition font-medium";
-        }
-
-        function toggleItemTypeFields() {
-            const type = document.getElementById('new-item-type').value;
-            const nameLabel = document.getElementById('item-name-label');
-            const parentWrap = document.getElementById('parent-folder-wrap');
-            const rolesWrap = document.getElementById('room-role-perms-wrap');
-
-            if (type === 'folder') {
-                nameLabel.textContent = 'Folder Name';
-                parentWrap.classList.add('hidden');
-                rolesWrap.classList.add('hidden');
-            } else {
-                nameLabel.textContent = 'Room Name';
-                parentWrap.classList.remove('hidden');
-                rolesWrap.classList.remove('hidden');
-            }
-        }
-
-        function populateAdminDropdowns() {
-            const folderSelect = document.getElementById('new-item-folder');
-            folderSelect.innerHTML = '<option value="">(No Folder / Root)</option>';
-            appState.folders.forEach(f => {
-                folderSelect.innerHTML += `<option value="${f.id}">${f.name}</option>`;
-            });
-
-            const whRoomSelect = document.getElementById('wh-room-select');
-            whRoomSelect.innerHTML = '';
-            appState.rooms.forEach(r => {
-                whRoomSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
-            });
-
-            const userRoleSelect = document.getElementById('user-role-select');
-            userRoleSelect.innerHTML = '';
-            appState.roles.forEach(role => {
-                userRoleSelect.innerHTML += `<option value="${role.id}">${role.name} (${role.id})</option>`;
-            });
-
-            const checkboxesContainer = document.getElementById('room-roles-checkboxes');
-            let cbHtml = '';
-            appState.roles.forEach(role => {
-                cbHtml += `
-                    <label class="flex items-center space-x-2 bg-stone-900 px-3 py-1.5 rounded-lg border border-stone-800 text-xs text-stone-300 cursor-pointer">
-                        <input type="checkbox" value="${role.id}" name="room-role-cb" checked class="accent-eden-500 rounded">
-                        <span>${role.name}</span>
-                    </label>`;
-            });
-            checkboxesContainer.innerHTML = cbHtml;
-        }
-
-        function createRoomOrFolder() {
-            const type = document.getElementById('new-item-type').value;
-            const name = document.getElementById('new-item-name').value.trim();
-
-            if (!name) {
-                showToast("Error", "Name cannot be empty.", "error");
-                return;
-            }
-
-            if (type === 'folder') {
-                const newFolder = { id: 'f_' + Date.now(), name: name };
-                appState.folders.push(newFolder);
-                showToast("Folder Created", `Folder "${name}" successfully added.`, "success");
-            } else {
-                const folderId = document.getElementById('new-item-folder').value;
-                const checkboxes = document.querySelectorAll('input[name="room-role-cb"]:checked');
-                const selectedRoles = Array.from(checkboxes).map(cb => cb.value);
-
-                const newRoom = { id: 'r_' + Date.now(), name: name, folderId: folderId, roles: selectedRoles };
-                appState.rooms.push(newRoom);
-                appState.messages[newRoom.id] = [];
-                showToast("Room Created", `Room "${name}" successfully created.`, "success");
-            }
-
-            document.getElementById('new-item-name').value = '';
-            populateAdminDropdowns();
-            renderAdminLists();
-            renderRoomsTree();
-        }
-
-        function saveWebhook() {
-            const name = document.getElementById('wh-name').value.trim();
-            const roomId = document.getElementById('wh-room-select').value;
-            const url = document.getElementById('wh-url').value.trim();
-
-            if (!name || !url) {
-                showToast("Error", "Please fill in webhook name and URL.", "error");
-                return;
-            }
-
-            const existingIdx = appState.webhooks.findIndex(w => w.roomId === roomId);
-            if (existingIdx >= 0) {
-                appState.webhooks[existingIdx] = { id: appState.webhooks[existingIdx].id, roomId, name, url };
-            } else {
-                appState.webhooks.push({ id: 'w_' + Date.now(), roomId, name, url });
-            }
-
-            showToast("Webhook Saved", "Discord webhook successfully linked to room.", "success");
-            document.getElementById('wh-name').value = '';
-            document.getElementById('wh-url').value = '';
-            renderAdminLists();
-            if (appState.activeRoomId === roomId) {
-                selectRoom(roomId);
-            }
-        }
-
-        function createRole() {
-            const name = document.getElementById('role-name-input').value.trim();
-            const desc = document.getElementById('role-desc-input').value.trim();
-
-            if (!name) {
-                showToast("Error", "Role name is required.", "error");
-                return;
-            }
-
-            const id = name.toLowerCase().replace(/\s+/g, '_');
-            if (appState.roles.some(r => r.id === id)) {
-                showToast("Error", "Role already exists.", "error");
-                return;
-            }
-
-            appState.roles.push({ id, name, description: desc });
-            showToast("Role Created", `Role "${name}" created successfully.`, "success");
-            document.getElementById('role-name-input').value = '';
-            document.getElementById('role-desc-input').value = '';
-            populateAdminDropdowns();
-            renderAdminLists();
-        }
-
-        function createUserLogin() {
-            const username = document.getElementById('user-username-input').value.trim();
-            const password = document.getElementById('user-password-input').value.trim();
-            const role = document.getElementById('user-role-select').value;
-
-            if (!username || !password) {
-                showToast("Error", "Username and password are required.", "error");
-                return;
-            }
-
-            if (appState.users.some(u => u.username === username)) {
-                showToast("Error", "Username already exists.", "error");
-                return;
-            }
-
-            appState.users.push({ username, password, role });
-            showToast("User Created", `Login generated for ${username} with role ${role}.`, "success");
-            document.getElementById('user-username-input').value = '';
-            document.getElementById('user-password-input').value = '';
-            renderAdminLists();
-        }
-
-        function renderAdminLists() {
-            const roomsListEl = document.getElementById('admin-rooms-list');
-            let roomsHtml = '';
-            appState.rooms.forEach(room => {
-                roomsHtml += `
-                    <div class="bg-stone-900 p-3 rounded-xl border border-stone-800 flex items-center justify-between text-xs">
-                        <div>
-                            <span class="font-semibold text-stone-200">#${room.name}</span>
-                            <span class="text-stone-400 ml-2">Roles: ${room.roles ? room.roles.join(', ') : 'None'}</span>
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div class="bg-eden-card border border-eden-border rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-white">Criar Nova Sala</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                         </div>
-                        <button onclick="deleteRoom('${room.id}')" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
-                    </div>`;
+                        <form onsubmit="createRoom(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome da Sala</label>
+                                <input type="text" id="newRoomName" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-eden-500">
+                            </div>
+                            <button type="submit" class="w-full bg-eden-600 hover:bg-eden-500 text-white font-semibold py-2.5 rounded-xl transition">Criar Sala na Nuvem</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-container').innerHTML = '';
+        }
+
+        function createRoom(e) {
+            e.preventDefault();
+            const name = document.getElementById('newRoomName').value;
+            db.collection("rooms").add({
+                name: name,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                closeModal();
+            }).catch((err) => {
+                alert("Erro ao criar sala: " + err.message);
             });
-            roomsListEl.innerHTML = roomsHtml;
-
-            const whListEl = document.getElementById('admin-webhooks-list');
-            let whHtml = '';
-            appState.webhooks.forEach(wh => {
-                const room = appState.rooms.find(r => r.id === wh.roomId);
-                whHtml += `
-                    <div class="bg-stone-900 p-3 rounded-xl border border-stone-800 flex items-center justify-between text-xs">
-                        <div>
-                            <span class="font-semibold text-stone-200">${wh.name}</span>
-                            <span class="text-stone-400 ml-2">Room: #${room ? room.name : 'Unknown'}</span>
-                        </div>
-                        <button onclick="deleteWebhook('${wh.id}')" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>
-                    </div>`;
-            });
-            whListEl.innerHTML = whHtml;
-
-            const rolesListEl = document.getElementById('admin-roles-list');
-            let rolesHtml = '';
-            appState.roles.forEach(role => {
-                rolesHtml += `
-                    <div class="bg-stone-900 p-3 rounded-xl border border-stone-800 flex items-center justify-between text-xs">
-                        <div>
-                            <span class="font-semibold text-stone-200">${role.name}</span> <span class="text-stone-500 font-mono">(${role.id})</span>
-                            <div class="text-stone-400 text-[11px]">${role.description}</div>
-                        </div>
-                    </div>`;
-            });
-            rolesListEl.innerHTML = rolesHtml;
-
-            const usersListEl = document.getElementById('admin-users-list');
-            let usersHtml = '';
-            appState.users.forEach(usr => {
-                usersHtml += `
-                    <div class="bg-stone-900 p-3 rounded-xl border border-stone-800 flex items-center justify-between text-xs">
-                        <div>
-                            <span class="font-semibold text-stone-200">${usr.username}</span> <span class="text-stone-400">Role: <strong class="text-eden-400">${usr.role}</strong></span>
-                            <div class="text-stone-500 font-mono text-[11px]">Pass: ${usr.password}</div>
-                        </div>
-                        ${usr.username !== 'MelgaCfg' ? `<button onclick="deleteUser('${usr.username}')" class="text-rose-400 hover:text-rose-300"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </div>`;
-            });
-            usersListEl.innerHTML = usersHtml;
         }
 
-        function deleteRoom(roomId) {
-            appState.rooms = appState.rooms.filter(r => r.id !== roomId);
-            delete appState.messages[roomId];
-            renderAdminLists();
-            renderRoomsTree();
-            showToast("Deleted", "Room successfully removed.", "info");
+        function logout() {
+            localStorage.removeItem('eden_current_user');
+            currentUser = null;
+            renderApp();
         }
 
-        function deleteWebhook(whId) {
-            appState.webhooks = appState.webhooks.filter(w => w.id !== whId);
-            renderAdminLists();
-            showToast("Deleted", "Webhook disconnected.", "info");
-        }
-
-        function deleteUser(username) {
-            appState.users = appState.users.filter(u => u.username !== username);
-            renderAdminLists();
-            showToast("Deleted", "User login revoked.", "info");
-        }
-
-        function showToast(title, desc, type) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-title').textContent = title;
-            document.getElementById('toast-desc').textContent = desc;
-            
-            const iconEl = document.getElementById('toast-icon');
-            if (type === 'error') {
-                iconEl.className = "w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs";
-                iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            } else if (type === 'info') {
-                iconEl.className = "w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs";
-                iconEl.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
-            } else {
-                iconEl.className = "w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs";
-                iconEl.innerHTML = '<i class="fa-solid fa-check"></i>';
-            }
-
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3500);
-        }
+        window.onload = renderApp;
     </script>
 </body>
 </html>
