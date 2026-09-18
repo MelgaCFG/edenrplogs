@@ -7,8 +7,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></link>
-    <!-- Firebase SDKs -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script>
@@ -33,9 +33,9 @@
         }
     </script>
 </head>
-<body class="bg-eden-dark text-gray-100 min-h-screen font-sans antialiased">
+<body class="bg-eden-dark text-gray-100 min-h-screen font-sans antialiased selection:bg-eden-500 selection:text-white">
 
-    <!-- Configuração do Firebase com os teus dados -->
+    <!-- Configuração do Firebase -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBF0dpYF-jgGsHhmuPPZWezFPpqiFcthkc",
@@ -50,14 +50,18 @@
         const db = firebase.firestore();
     </script>
 
-    <!-- App Container -->
-    <div id="app" class="min-h-screen flex flex-col">
-        <!-- O conteúdo será injetado pelo JavaScript -->
-    </div>
+    <div id="app" class="min-h-screen flex flex-col"></div>
+    <div id="modal-container"></div>
 
     <script>
         let currentUser = JSON.parse(localStorage.getItem('eden_current_user')) || null;
         const ADMIN_USER = { username: "MelgaCfg", role: "admin", name: "Administrador" };
+
+        let rooms = [];
+        let folders = [];
+        let roles = [];
+        let usersList = [];
+        let webhooksList = [];
 
         function renderApp() {
             const app = document.getElementById('app');
@@ -65,32 +69,34 @@
                 app.innerHTML = renderLoginScreen();
             } else {
                 app.innerHTML = renderDashboard();
-                initRealtimeSync();
+                initCloudSync();
             }
         }
 
         function renderLoginScreen() {
             return `
                 <div class="flex-1 flex items-center justify-center p-4">
-                    <div class="bg-eden-card border border-eden-border rounded-2xl p-8 max-w-md w-full shadow-2xl">
+                    <div class="bg-eden-card border border-eden-border rounded-2xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+                        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-eden-600 to-eden-400"></div>
                         <div class="text-center mb-8">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-eden-500/10 text-eden-500 mb-4 text-2xl">
-                                <i class="fa-solid fa-shield-halved"></i>
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-eden-500/10 text-eden-500 mb-4 text-2xl border border-eden-500/20 shadow-lg shadow-eden-500/5">
+                                <i class="fa-solid fa-cube"></i>
                             </div>
                             <h1 class="text-2xl font-bold tracking-tight text-white">Eden Logs</h1>
-                            <p class="text-sm text-gray-400 mt-1">Insira as suas credenciais para aceder ao portal</p>
+                            <p class="text-sm text-gray-400 mt-1">Portal restrito de webhooks e salas</p>
                         </div>
                         <form onsubmit="handleLogin(event)" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Utilizador</label>
-                                <input type="text" id="loginUser" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500">
+                                <input type="text" id="loginUser" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500 transition">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Palavra-passe</label>
-                                <input type="password" id="loginPass" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500">
+                                <input type="password" id="loginPass" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-eden-500 transition">
                             </div>
-                            <button type="submit" class="w-full bg-eden-600 hover:bg-eden-500 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-eden-600/20">
-                                Entrar no Portal
+                            <button type="submit" class="w-full bg-eden-600 hover:bg-eden-500 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-eden-600/20 flex items-center justify-center space-x-2">
+                                <span>Entrar no Portal</span>
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
                             </button>
                         </form>
                     </div>
@@ -127,112 +133,294 @@
         function renderDashboard() {
             return `
                 <div class="flex h-screen overflow-hidden">
+                    <!-- Sidebar -->
                     <aside class="w-72 bg-eden-card border-r border-eden-border flex flex-col">
                         <div class="p-5 border-b border-eden-border flex items-center justify-between">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-xl bg-eden-500/20 flex items-center justify-center text-eden-500 font-bold">
+                                <div class="w-10 h-10 rounded-xl bg-eden-500/20 flex items-center justify-center text-eden-500 font-bold border border-eden-500/30">
                                     <i class="fa-solid fa-cube"></i>
                                 </div>
-                                <span class="font-bold text-lg text-white">Eden Logs</span>
+                                <div>
+                                    <span class="font-bold text-base text-white block leading-tight">Eden Logs</span>
+                                    <span class="text-[11px] text-gray-400">Olá, ${currentUser.name || currentUser.username}</span>
+                                </div>
                             </div>
-                            <button onclick="logout()" title="Terminar Sessão" class="text-gray-400 hover:text-red-400 transition"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+                            <button onclick="logout()" title="Terminar Sessão" class="text-gray-400 hover:text-red-400 transition p-2 rounded-lg hover:bg-eden-dark"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
                         </div>
-                        <div id="sidebar-rooms" class="flex-1 overflow-y-auto p-4 space-y-2">
-                            <p class="text-xs text-gray-500">A carregar salas da nuvem...</p>
+
+                        <!-- Search Bar -->
+                        <div class="p-4 border-b border-eden-border">
+                            <div class="relative">
+                                <i class="fa-solid fa-search absolute left-3.5 top-3 text-xs text-gray-500"></i>
+                                <input type="text" id="globalSearch" oninput="handleGlobalSearch(this.value)" placeholder="Pesquisar salas, pastas..." class="w-full bg-eden-dark border border-eden-border rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-eden-500 transition">
+                            </div>
                         </div>
+
+                        <!-- Sidebar Rooms / Folders Navigation -->
+                        <div id="sidebar-rooms-list" class="flex-1 overflow-y-auto p-4 space-y-4">
+                            <p class="text-xs text-gray-500 italic">A carregar conteúdo...</p>
+                        </div>
+
                         ${currentUser.role === 'admin' ? `
-                            <div class="p-4 border-t border-eden-border">
-                                <button onclick="openAdminModal()" class="w-full bg-eden-600/20 hover:bg-eden-600/30 text-eden-500 text-sm font-semibold py-2.5 rounded-xl transition border border-eden-500/30">
-                                    <i class="fa-solid fa-gear mr-2"></i> Painel de Admin
+                            <div class="p-4 border-t border-eden-border bg-eden-dark/50">
+                                <button onclick="openAdminModal()" class="w-full bg-eden-600/20 hover:bg-eden-600/30 text-eden-500 text-xs font-semibold py-2.5 rounded-xl transition border border-eden-500/30 flex items-center justify-center space-x-2">
+                                    <i class="fa-solid fa-gear"></i>
+                                    <span>Painel de Administração</span>
                                 </button>
                             </div>
                         ` : ''}
                     </aside>
-                    <main id="main-content" class="flex-1 flex flex-col bg-eden-dark overflow-y-auto p-8">
-                        <div class="max-w-2xl mx-auto text-center mt-20">
+
+                    <!-- Main View -->
+                    <main id="main-view" class="flex-1 flex flex-col bg-eden-dark overflow-y-auto p-8">
+                        <div class="max-w-2xl mx-auto text-center my-auto">
+                            <div class="w-16 h-16 bg-eden-500/10 rounded-2xl flex items-center justify-center text-eden-500 text-2xl mx-auto mb-4 border border-eden-500/20">
+                                <i class="fa-solid fa-terminal"></i>
+                            </div>
                             <h2 class="text-2xl font-bold mb-2">Bem-vindo ao Eden Logs</h2>
-                            <p class="text-gray-400">Selecione uma sala ao lado para ver os registos sincronizados em tempo real.</p>
+                            <p class="text-sm text-gray-400">Selecione uma sala no menu lateral para visualizar os registos dos webhooks em tempo real.</p>
                         </div>
                     </main>
                 </div>
-                <div id="modal-container"></div>
             `;
         }
 
-        function initRealtimeSync() {
+        function initCloudSync() {
+            // Sincronizar Salas
             db.collection("rooms").onSnapshot((snapshot) => {
-                const container = document.getElementById('sidebar-rooms');
-                if(!container) return;
-                let html = '<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Salas</h3>';
-                if (snapshot.empty) {
-                    html += '<p class="text-xs text-gray-500 italic">Nenhuma sala criada ainda.</p>';
-                }
-                snapshot.forEach((doc) => {
-                    const room = doc.data();
-                    html += `
-                        <div onclick="selectRoom('${doc.id}', '${room.name}')" class="p-3 bg-eden-dark border border-eden-border rounded-xl cursor-pointer hover:border-eden-500 transition flex items-center justify-between">
-                            <span class="font-semibold text-white text-sm"><i class="fa-solid fa-hashtag mr-2 text-eden-500"></i>${room.name}</span>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
+                rooms = [];
+                snapshot.forEach(doc => rooms.push({ id: doc.id, ...doc.data() }));
+                renderSidebarNav();
+            });
+
+            // Sincronizar Pastas
+            db.collection("folders").onSnapshot((snapshot) => {
+                folders = [];
+                snapshot.forEach(doc => folders.push({ id: doc.id, ...doc.data() }));
+                renderSidebarNav();
+            });
+
+            // Sincronizar Cargos
+            db.collection("roles").onSnapshot((snapshot) => {
+                roles = [];
+                snapshot.forEach(doc => roles.push({ id: doc.id, ...doc.data() }));
+            });
+
+            // Sincronizar Webhooks
+            db.collection("webhooks").onSnapshot((snapshot) => {
+                webhooksList = [];
+                snapshot.forEach(doc => webhooksList.push({ id: doc.id, ...doc.data() }));
             });
         }
 
-        function selectRoom(roomId, roomName) {
-            const main = document.getElementById('main-content');
+        function renderSidebarNav() {
+            const container = document.getElementById('sidebar-rooms-list');
+            if (!container) return;
+
+            let html = '<div class="space-y-1">';
+            html += '<p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 mb-2">Salas & Pastas</p>';
+
+            // Salas sem pasta
+            const unassignedRooms = rooms.filter(r => !r.folderId);
+            unassignedRooms.forEach(room => {
+                html += `
+                    <div onclick="openRoom('${room.id}')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-gray-300 hover:bg-eden-card hover:text-white cursor-pointer transition group">
+                        <span class="truncate"><i class="fa-solid fa-hashtag text-eden-500 mr-2"></i>${room.name}</span>
+                    </div>
+                `;
+            });
+
+            // Pastas e respetivas salas
+            folders.forEach(folder => {
+                const folderRooms = rooms.filter(r => r.folderId === folder.id);
+                html += `
+                    <div class="mt-2">
+                        <div class="px-2 py-1.5 text-xs font-bold text-gray-400 flex items-center justify-between">
+                            <span class="truncate"><i class="fa-solid fa-folder text-eden-500/70 mr-2"></i>${folder.name}</span>
+                        </div>
+                        <div class="ml-3 pl-2 border-l border-eden-border space-y-1 mt-1">
+                `;
+                folderRooms.forEach(room => {
+                    html += `
+                        <div onclick="openRoom('${room.id}')" class="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-eden-card hover:text-white cursor-pointer transition">
+                            <span class="truncate"><i class="fa-solid fa-hashtag text-eden-500/60 mr-2 text-[10px]"></i>${room.name}</span>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function openRoom(roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            const main = document.getElementById('main-view');
             main.innerHTML = `
                 <div class="flex items-center justify-between pb-4 border-b border-eden-border mb-6">
                     <div>
-                        <h2 class="text-xl font-bold text-white"><i class="fa-solid fa-hashtag text-eden-500 mr-2"></i>${roomName}</h2>
-                        <p class="text-xs text-gray-400">Registo de mensagens e webhooks em tempo real</p>
+                        <h2 class="text-xl font-bold text-white flex items-center"><i class="fa-solid fa-hashtag text-eden-500 mr-2"></i>${room.name}</h2>
+                        <p class="text-xs text-gray-400">${room.description || 'Registo de mensagens de webhook em tempo real'}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        ${currentUser.role === 'admin' ? `
+                            <button onclick="openAssignWebhookModal('${room.id}')" class="bg-eden-card hover:bg-eden-border border border-eden-border text-xs text-gray-300 px-3 py-2 rounded-xl transition flex items-center space-x-2">
+                                <i class="fa-solid fa-link text-eden-500"></i>
+                                <span>Associar Webhook</span>
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
-                <div id="room-messages" class="space-y-3 flex-1 overflow-y-auto pr-2">
-                    <p class="text-sm text-gray-500 italic">A carregar mensagens...</p>
+                <div id="room-messages-container" class="space-y-3 flex-1 overflow-y-auto pr-2">
+                    <p class="text-xs text-gray-500 italic">A carregar mensagens da sala...</p>
                 </div>
             `;
 
-            db.collection("rooms").doc(roomId).collection("messages").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-                const msgContainer = document.getElementById('room-messages');
-                if (!msgContainer) return;
+            // Ouve as mensagens desta sala em tempo real
+            db.collection("rooms").doc(roomId).collection("messages").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                const msgBox = document.getElementById('room-messages-container');
+                if (!msgBox) return;
                 if (snapshot.empty) {
-                    msgContainer.innerHTML = '<p class="text-sm text-gray-500 italic">Ainda não existem mensagens nesta sala.</p>';
+                    msgBox.innerHTML = '<div class="text-center py-12 text-gray-500 text-xs italic">Ainda não existem mensagens registadas por webhook nesta sala.</div>';
                     return;
                 }
                 let mHtml = '';
-                snapshot.forEach((doc) => {
+                snapshot.forEach(doc => {
                     const m = doc.data();
                     mHtml += `
-                        <div class="bg-eden-card border border-eden-border p-4 rounded-xl">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-bold text-eden-500">${m.author || 'Webhook'}</span>
-                                <span class="text-[10px] text-gray-500">${new Date(m.timestamp?.toDate ? m.timestamp.toDate() : m.timestamp).toLocaleString()}</span>
+                        <div class="bg-eden-card border border-eden-border p-4 rounded-xl space-y-1 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-eden-500 flex items-center"><i class="fa-solid fa-robot mr-1.5 text-[10px]"></i>${m.author || 'Discord Webhook'}</span>
+                                <span class="text-[10px] text-gray-500">${m.timestamp?.toDate ? m.timestamp.toDate().toLocaleString() : new Date().toLocaleString()}</span>
                             </div>
-                            <p class="text-sm text-gray-200">${m.message}</p>
+                            <p class="text-sm text-gray-200 whitespace-pre-wrap">${m.message}</p>
                         </div>
                     `;
                 });
-                msgContainer.innerHTML = mHtml;
+                msgBox.innerHTML = mHtml;
             });
         }
 
+        function handleGlobalSearch(query) {
+            const container = document.getElementById('sidebar-rooms-list');
+            if (!container) return;
+            if (!query.trim()) {
+                renderSidebarNav();
+                return;
+            }
+
+            const q = query.toLowerCase();
+            const matchedRooms = rooms.filter(r => r.name.toLowerCase().includes(q));
+            const matchedFolders = folders.filter(f => f.name.toLowerCase().includes(q));
+
+            let html = '<div class="space-y-1"><p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 mb-2">Resultados da Pesquisa</p>';
+            if (matchedRooms.length === 0 && matchedFolders.length === 0) {
+                html += '<p class="text-xs text-gray-500 italic px-2">Nenhum resultado encontrado.</p>';
+            }
+            matchedFolders.forEach(f => {
+                html += `<div class="px-3 py-2 bg-eden-card border border-eden-border rounded-xl text-xs text-white font-semibold"><i class="fa-solid fa-folder text-eden-500 mr-2"></i>${f.name} (Pasta)</div>`;
+            });
+            matchedRooms.forEach(r => {
+                html += `<div onclick="openRoom('${r.id}')" class="px-3 py-2 bg-eden-card border border-eden-border rounded-xl text-xs text-white font-semibold cursor-pointer hover:border-eden-500 transition"><i class="fa-solid fa-hashtag text-eden-500 mr-2"></i>${r.name}</div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Painel de Administração Completo
         function openAdminModal() {
             const modal = document.getElementById('modal-container');
             modal.innerHTML = `
                 <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div class="bg-eden-card border border-eden-border rounded-2xl p-6 max-w-lg w-full shadow-2xl">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-white">Criar Nova Sala</h3>
+                    <div class="bg-eden-card border border-eden-border rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div class="p-5 border-b border-eden-border flex items-center justify-between">
+                            <h3 class="text-base font-bold text-white flex items-center"><i class="fa-solid fa-gear text-eden-500 mr-2"></i>Painel de Administração</h3>
+                            <button onclick="closeModal()" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="p-6 overflow-y-auto space-y-6 flex-1">
+                            <!-- Criar Sala -->
+                            <div class="bg-eden-dark border border-eden-border p-4 rounded-xl space-y-3">
+                                <h4 class="text-xs font-bold text-white uppercase tracking-wider">Criar Nova Sala</h4>
+                                <form onsubmit="handleCreateRoom(event)" class="space-y-3">
+                                    <input type="text" id="adminRoomName" placeholder="Nome da sala (ex: logs-geral)" required class="w-full bg-eden-card border border-eden-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-eden-500">
+                                    <select id="adminRoomFolder" class="w-full bg-eden-card border border-eden-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-eden-500">
+                                        <option value="">Sem pasta (Raiz)</option>
+                                        ${folders.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+                                    </select>
+                                    <button type="submit" class="bg-eden-600 hover:bg-eden-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">Criar Sala</button>
+                                </form>
+                            </div>
+
+                            <!-- Criar Pasta -->
+                            <div class="bg-eden-dark border border-eden-border p-4 rounded-xl space-y-3">
+                                <h4 class="text-xs font-bold text-white uppercase tracking-wider">Criar Nova Pasta</h4>
+                                <form onsubmit="handleCreateFolder(event)" class="space-y-3">
+                                    <input type="text" id="adminFolderName" placeholder="Nome da pasta (ex: Servidor Principal)" required class="w-full bg-eden-card border border-eden-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-eden-500">
+                                    <button type="submit" class="bg-eden-600 hover:bg-eden-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">Criar Pasta</button>
+                                </form>
+                            </div>
+
+                            <!-- Criar Webhook -->
+                            <div class="bg-eden-dark border border-eden-border p-4 rounded-xl space-y-3">
+                                <h4 class="text-xs font-bold text-white uppercase tracking-wider">Criar Webhook</h4>
+                                <form onsubmit="handleCreateWebhook(event)" class="space-y-3">
+                                    <input type="text" id="adminWebhookName" placeholder="Nome do Webhook (ex: Servidor FiveM)" required class="w-full bg-eden-card border border-eden-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-eden-500">
+                                    <select id="adminWebhookRoom" required class="w-full bg-eden-card border border-eden-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-eden-500">
+                                        <option value="">Selecione a sala de destino</option>
+                                        ${rooms.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+                                    </select>
+                                    <button type="submit" class="bg-eden-600 hover:bg-eden-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">Gerar Webhook</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleCreateRoom(e) {
+            e.preventDefault();
+            const name = document.getElementById('adminRoomName').value;
+            const folderId = document.getElementById('adminRoomFolder').value;
+            db.collection("rooms").add({ name, folderId: folderId || null }).then(() => {
+                closeModal();
+            });
+        }
+
+        function handleCreateFolder(e) {
+            e.preventDefault();
+            const name = document.getElementById('adminFolderName').value;
+            db.collection("folders").add({ name }).then(() => {
+                closeModal();
+            });
+        }
+
+        function handleCreateWebhook(e) {
+            e.preventDefault();
+            const name = document.getElementById('adminWebhookName').value;
+            const roomId = document.getElementById('adminWebhookRoom').value;
+            db.collection("webhooks").add({ name, roomId }).then((docRef) => {
+                alert(`Webhook criado com sucesso! ID: ${docRef.id}`);
+                closeModal();
+            });
+        }
+
+        function openAssignWebhookModal(roomId) {
+            const roomWebhooks = webhooksList.filter(w => w.roomId === roomId);
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div class="bg-eden-card border border-eden-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-bold text-white">Webhooks da Sala</h3>
                             <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                         </div>
-                        <form onsubmit="createRoom(event)" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome da Sala</label>
-                                <input type="text" id="newRoomName" required class="w-full bg-eden-dark border border-eden-border rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-eden-500">
-                            </div>
-                            <button type="submit" class="w-full bg-eden-600 hover:bg-eden-500 text-white font-semibold py-2.5 rounded-xl transition">Criar Sala na Nuvem</button>
-                        </form>
+                        <div class="space-y-2">
+                            ${roomWebhooks.length === 0 ? '<p class="text-xs text-gray-500 italic">Nenhum webhook associado a esta sala.</p>' : roomWebhooks.map(w => `<div class="bg-eden-dark border border-eden-border p-3 rounded-xl text-xs"><span class="font-bold text-eden-500">${w.name}</span></div>`).join('')}
+                        </div>
                     </div>
                 </div>
             `;
@@ -240,19 +428,6 @@
 
         function closeModal() {
             document.getElementById('modal-container').innerHTML = '';
-        }
-
-        function createRoom(e) {
-            e.preventDefault();
-            const name = document.getElementById('newRoomName').value;
-            db.collection("rooms").add({
-                name: name,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                closeModal();
-            }).catch((err) => {
-                alert("Erro ao criar sala: " + err.message);
-            });
         }
 
         function logout() {
